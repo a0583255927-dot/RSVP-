@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ניהול אירועים - RSVP PRO</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root { --primary: #1a2a3a; --success: #2ecc71; --bg: #f8f9fa; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); padding: 20px; }
+        .container { max-width: 500px; margin: auto; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        h2 { text-align: center; color: var(--primary); margin-bottom: 30px; }
+        input { width: 100%; padding: 12px; margin: 10px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 16px; }
+        button { width: 100%; padding: 14px; background: var(--success); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 18px; margin-top: 10px; transition: 0.3s; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        #status { margin-top: 15px; text-align: center; font-weight: bold; min-height: 24px; }
+        .event-list { margin-top: 30px; border-top: 2px solid #f0f0f0; padding-top: 20px; }
+        .event-item { background: #fff; padding: 15px; border: 1px solid #eee; margin-bottom: 10px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+        .event-info b { color: var(--primary); display: block; }
+        .event-info small { color: #888; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>יצירת אירוע חדש ✍️</h2>
+    
+    <label>שם האירוע:</label>
+    <input type="text" id="eventName" placeholder="למשל: חתונה משה ורחל">
+    
+    <label>קישור (באנגלית בלבד):</label>
+    <input type="text" id="eventSlug" placeholder="למשל: moshe-wedding">
+    
+    <button id="mainBtn" onclick="saveEvent()">צור אירוע עכשיו 🚀</button>
+    <div id="status"></div>
+
+    <div class="event-list">
+        <h3>האירועים שנוצרו:</h3>
+        <div id="list">טוען נתונים...</div>
+    </div>
+</div>
+
+<script>
+    // הגדרות החיבור האישיות שלך - כבר מעודכן!
+    const SUPABASE_URL = 'https://eopruwspkouhsogkcldw.supabase.co';
+    const SUPABASE_KEY = 'Sb_publishable_QfFOOBsJU_Anw87v00EyEg_IGiS9ver';
+
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    async function saveEvent() {
+        const name = document.getElementById('eventName').value;
+        const slugInput = document.getElementById('eventSlug').value.trim().toLowerCase();
+        const status = document.getElementById('status');
+        const btn = document.getElementById('mainBtn');
+
+        if(!name || !slugInput) {
+            alert("יהונתן, אל תשכח למלא את כל השדות!");
+            return;
+        }
+
+        // ניקוי סלאג מרווחים
+        const slug = slugInput.replace(/\s+/g, '-');
+
+        status.innerText = "מעבד נתונים...";
+        status.style.color = "orange";
+        btn.disabled = true;
+        
+        const { error } = await _supabase.from('events').insert([{ 
+            event_name: name, 
+            slug: slug 
+        }]);
+
+        if (error) {
+            status.innerText = "שגיאה: " + error.message;
+            status.style.color = "red";
+            console.error(error);
+        } else {
+            status.innerText = "האירוע נוצר בהצלחה! 🎉";
+            status.style.color = "green";
+            document.getElementById('eventName').value = '';
+            document.getElementById('eventSlug').value = '';
+            loadEvents();
+        }
+        btn.disabled = false;
+    }
+
+    async function loadEvents() {
+        const listContainer = document.getElementById('list');
+        const { data, error } = await _supabase
+            .from('events')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            listContainer.innerHTML = "שגיאה בטעינת הרשימה";
+            return;
+        }
+
+        if (data.length === 0) {
+            listContainer.innerHTML = "<p>אין עדיין אירועים. צור את הראשון!</p>";
+            return;
+        }
+
+        listContainer.innerHTML = data.map(e => `
+            <div class="event-item">
+                <div class="event-info">
+                    <b>${e.event_name}</b>
+                    <small>/event/${e.slug}</small>
+                </div>
+                <button style="width:auto; padding:5px 10px; font-size:12px; background:#3498db;" 
+                        onclick="window.open('/event.html?slug=${e.slug}')">צפה</button>
+            </div>
+        `).join('');
+    }
+
+    // טעינה ראשונית של הרשימה
+    loadEvents();
+</script>
+</body>
+</html>
